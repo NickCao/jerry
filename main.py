@@ -18,7 +18,6 @@ Run the bot using::
     uv run bot.py
 """
 
-
 from dotenv import load_dotenv
 from loguru import logger
 from pipecat.audio.vad.silero import SileroVADAnalyzer
@@ -32,7 +31,6 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMUserAggregatorParams,
 )
 from pipecat.runner.types import (
-    DailyRunnerArguments,
     RunnerArguments,
     SmallWebRTCRunnerArguments,
 )
@@ -70,6 +68,7 @@ async def run_bot(transport: BaseTransport):
     # LLM service (via OpenRouter)
     llm = OpenAILLMService(
         base_url="http://127.0.0.1:8000/v1",
+        api_key="dummy",
         settings=OpenAILLMService.Settings(
             model="Qwen/Qwen3-4B-AWQ",
             system_instruction="You are a helpful assistant in a voice conversation. Your responses will be spoken aloud, so avoid emojis, bullet points, or other formatting that can't be spoken. Respond to what the user said in a creative, helpful, and brief way.",
