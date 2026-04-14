@@ -18,8 +18,12 @@ Run the bot using::
     uv run bot.py
 """
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from dotenv import load_dotenv
 from loguru import logger
+from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import LLMRunFrame
 from pipecat.pipeline.pipeline import Pipeline
@@ -35,6 +39,7 @@ from pipecat.runner.types import (
     SmallWebRTCRunnerArguments,
 )
 from pipecat.services.kokoro.tts import KokoroTTSService
+from pipecat.services.llm_service import FunctionCallParams
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.whisper.stt import WhisperSTTService, Model as WhisperModel
 from pipecat.transports.base_transport import BaseTransport, TransportParams
@@ -42,6 +47,16 @@ from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 
 load_dotenv(override=True)
+
+
+async def get_current_time(params: FunctionCallParams, timezone: str):
+    """Get the current time in a given timezone.
+
+    Args:
+        timezone: IANA timezone name, e.g. "America/New_York", "Europe/London", "Asia/Tokyo".
+    """
+    now = datetime.now(ZoneInfo(timezone))
+    await params.result_callback({"time": now.strftime("%H:%M"), "timezone": timezone})
 
 
 async def run_bot(transport: BaseTransport):
@@ -75,7 +90,9 @@ async def run_bot(transport: BaseTransport):
         ),
     )
 
-    context = LLMContext()
+    tools = ToolsSchema(standard_tools=[get_current_time])
+
+    context = LLMContext(tools=tools)
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
