@@ -1,4 +1,4 @@
-podman run --name llm --rm -ti --device nvidia.com/gpus=all --network host \
+podman run --name llm --rm -ti --device nvidia.com/gpu=all --network host \
     -v ~/.cache/huggingface:/root/.cache/huggingface \
     ghcr.io/nvidia-ai-iot/vllm:latest-jetson-orin Qwen/Qwen3-4B-AWQ \
     --port 8000 --max-model-len 4096 --reasoning-parser qwen3 \
