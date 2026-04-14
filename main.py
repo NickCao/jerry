@@ -49,14 +49,10 @@ from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 load_dotenv(override=True)
 
 
-async def get_current_time(params: FunctionCallParams, timezone: str):
-    """Get the current time in a given timezone.
-
-    Args:
-        timezone: IANA timezone name, e.g. "America/New_York", "Europe/London", "Asia/Tokyo".
-    """
-    now = datetime.now(ZoneInfo(timezone))
-    await params.result_callback({"time": now.strftime("%H:%M"), "timezone": timezone})
+async def get_current_time(params: FunctionCallParams):
+    """Get the current local time."""
+    now = datetime.now().astimezone()
+    await params.result_callback({"time": now.strftime("%H:%M")})
 
 
 async def run_bot(transport: BaseTransport):
@@ -85,10 +81,12 @@ async def run_bot(transport: BaseTransport):
         base_url="http://127.0.0.1:8000/v1",
         api_key="dummy",
         settings=OpenAILLMService.Settings(
-            model="RedHatAI/gemma-3-1b-it-quantized.w4a16",
-            system_instruction="You are a helpful assistant in a voice conversation. Your responses will be spoken aloud, so avoid emojis, bullet points, or other formatting that can't be spoken. Respond to what the user said in a creative, helpful, and brief way.",
+            model="Qwen/Qwen2.5-3B-Instruct-AWQ",
+            system_instruction="You are a helpful assistant in a voice conversation. Your responses will be spoken aloud, so avoid emojis, bullet points, or other formatting that can't be spoken. Respond to what the user said in a creative, helpful, and brief way. When you need information you don't have, always use the available tools instead of guessing or making up answers.",
         ),
     )
+
+    llm.register_direct_function(get_current_time)
 
     tools = ToolsSchema(standard_tools=[get_current_time])
 
