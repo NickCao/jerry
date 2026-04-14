@@ -11,8 +11,8 @@ RUN apt-get update && \
     apt-get install -y libxcb1 libgl1 libglib2.0-0t64
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=uv.lock,target=uv.lock,z \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml,z \
     uv sync --locked --no-install-project
 
 COPY . /app
