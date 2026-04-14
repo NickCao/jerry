@@ -1,4 +1,4 @@
-FROM ghcr.io/nvidia-ai-iot/vllm:0.19.0-r36.4.tegra-aarch64-cu126-22.04
+FROM ghcr.io/nvidia-ai-iot/vllm:latest-jetson-orin
 RUN apt-get update && \
     apt-get install -y git sox libsox-fmt-all jq && \
     apt-get clean && \
