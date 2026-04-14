@@ -1,3 +1,4 @@
+mkdir -p ~/.cache/huggingface 
 podman run --name llm --rm -ti --device nvidia.com/gpu=all --network host \
     -v ~/.cache/huggingface:/root/.cache/huggingface \
     ghcr.io/nvidia-ai-iot/vllm:latest-jetson-orin vllm serve Qwen/Qwen3-4B-AWQ \
