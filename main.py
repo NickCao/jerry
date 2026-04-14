@@ -70,7 +70,7 @@ async def run_bot(transport: BaseTransport):
         base_url="http://127.0.0.1:8000/v1",
         api_key="dummy",
         settings=OpenAILLMService.Settings(
-            model="Qwen/Qwen3-4B-AWQ",
+            model="RedHatAI/gemma-3-1b-it-quantized.w4a16",
             system_instruction="You are a helpful assistant in a voice conversation. Your responses will be spoken aloud, so avoid emojis, bullet points, or other formatting that can't be spoken. Respond to what the user said in a creative, helpful, and brief way.",
         ),
     )
