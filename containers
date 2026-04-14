@@ -1,0 +1,5 @@
+docker run --name llm --rm -ti --runtime nvidia --gpus all --network host \
+    -v ~/.cache/huggingface:/root/.cache/huggingface \
+    docker.io/vllm/vllm-openai:latest Qwen/Qwen3-4B-AWQ \
+    --port 8000 --max-model-len 4096 --reasoning-parser qwen3 \
+    --default-chat-template-kwargs '{"enable_thinking": false}'
