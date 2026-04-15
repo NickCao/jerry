@@ -19,7 +19,6 @@ Run the bot using::
 """
 
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -38,9 +37,9 @@ from pipecat.runner.types import (
     RunnerArguments,
     SmallWebRTCRunnerArguments,
 )
-from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.llm_service import FunctionCallParams
 from pipecat.services.openai.llm import OpenAILLMService
+from pipecat.services.openai.tts import OpenAITTSService
 from pipecat.services.whisper.stt import WhisperSTTService, Model as WhisperModel
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
@@ -68,11 +67,12 @@ async def run_bot(transport: BaseTransport):
         device="cpu",
     )
 
-    # Text-to-Speech service (local Kokoro)
-    tts = KokoroTTSService(
-        settings=KokoroTTSService.Settings(
+    # Text-to-Speech service (via vllm-omni OpenAI-compatible API)
+    tts = OpenAITTSService(
+        base_url="http://127.0.0.1:8001/v1",
+        api_key="dummy",
+        settings=OpenAITTSService.Settings(
             voice="af_heart",
-            language="en",
         ),
     )
 
