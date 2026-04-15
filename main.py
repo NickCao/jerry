@@ -39,13 +39,16 @@ from pipecat.runner.types import (
 )
 from pipecat.services.llm_service import FunctionCallParams
 from pipecat.services.openai.llm import OpenAILLMService
-from pipecat.services.openai.tts import OpenAITTSService
+from pipecat.services.openai.tts import OpenAITTSService, VALID_VOICES
 from pipecat.services.whisper.stt import WhisperSTTService, Model as WhisperModel
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 
 load_dotenv(override=True)
+
+# Allow custom voice names for non-OpenAI TTS servers
+VALID_VOICES["af_heart"] = "af_heart"
 
 
 async def get_current_time(params: FunctionCallParams):
