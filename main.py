@@ -18,6 +18,7 @@ Run the bot using::
     uv run bot.py
 """
 
+import os
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -62,11 +63,22 @@ async def get_current_time(params: FunctionCallParams):
     await params.result_callback({"time": now.strftime("%H:%M")})
 
 
+SYSTEM_INSTRUCTION = (
+    "You are a helpful assistant in a voice conversation. Your responses will "
+    "be spoken aloud, so avoid emojis, bullet points, or other formatting that "
+    "can't be spoken. Respond to what the user said in a creative, helpful, and "
+    "brief way. When you need information you don't have, always use the "
+    "available tools instead of guessing or making up answers."
+)
+
+TEST_MODE = os.environ.get("JERRY_TEST", "").lower() in ("1", "true", "yes")
+
+
 async def run_bot(transport: BaseTransport):
     """Main bot logic."""
-    logger.info("Starting bot")
+    logger.info(f"Starting bot (test_mode={TEST_MODE})")
 
-    # Speech-to-Text service (local Whisper)
+    # Speech-to-Text service (always local Whisper)
     stt = WhisperSTTService(
         settings=WhisperSTTService.Settings(
             model=WhisperModel.TINY.value,
@@ -75,24 +87,41 @@ async def run_bot(transport: BaseTransport):
         device="cpu",
     )
 
-    # Text-to-Speech service (via vllm-omni OpenAI-compatible API)
-    tts = OpenAITTSService(
-        base_url="http://127.0.0.1:8001/v1",
-        api_key="dummy",
-        settings=OpenAITTSService.Settings(
-            voice="af_heart",
-        ),
-    )
+    if TEST_MODE:
+        from pipecat.services.kokoro.tts import KokoroTTSService
 
-    # LLM service (via OpenRouter)
-    llm = OpenAILLMService(
-        base_url="http://127.0.0.1:8000/v1",
-        api_key="dummy",
-        settings=OpenAILLMService.Settings(
-            model="Qwen/Qwen2.5-3B-Instruct-AWQ",
-            system_instruction="You are a helpful assistant in a voice conversation. Your responses will be spoken aloud, so avoid emojis, bullet points, or other formatting that can't be spoken. Respond to what the user said in a creative, helpful, and brief way. When you need information you don't have, always use the available tools instead of guessing or making up answers.",
-        ),
-    )
+        tts = KokoroTTSService(
+            settings=KokoroTTSService.Settings(
+                voice="af_heart",
+                language="en",
+            ),
+        )
+
+        llm = OpenAILLMService(
+            base_url=os.environ.get("OPENAI_BASE_URL", "https://openrouter.ai/api/v1"),
+            api_key=os.environ.get("OPENAI_API_KEY", ""),
+            settings=OpenAILLMService.Settings(
+                model=os.environ.get("OPENAI_MODEL", "qwen/qwen-2.5-7b-instruct"),
+                system_instruction=SYSTEM_INSTRUCTION,
+            ),
+        )
+    else:
+        tts = OpenAITTSService(
+            base_url="http://127.0.0.1:8001/v1",
+            api_key="dummy",
+            settings=OpenAITTSService.Settings(
+                voice="af_heart",
+            ),
+        )
+
+        llm = OpenAILLMService(
+            base_url="http://127.0.0.1:8000/v1",
+            api_key="dummy",
+            settings=OpenAILLMService.Settings(
+                model="Qwen/Qwen2.5-3B-Instruct-AWQ",
+                system_instruction=SYSTEM_INSTRUCTION,
+            ),
+        )
 
     llm.register_direct_function(get_current_time)
 
