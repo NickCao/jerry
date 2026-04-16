@@ -33,6 +33,11 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
+from pipecat.turns.user_start import WakePhraseUserTurnStartStrategy
+from pipecat.turns.user_turn_strategies import (
+    UserTurnStrategies,
+    default_user_turn_start_strategies,
+)
 from pipecat.runner.types import (
     RunnerArguments,
     SmallWebRTCRunnerArguments,
@@ -93,11 +98,19 @@ async def run_bot(transport: BaseTransport):
 
     tools = ToolsSchema(standard_tools=[get_current_time])
 
+    wake = WakePhraseUserTurnStartStrategy(
+        phrases=["hey jerry"],
+        timeout=5.0,
+    )
+
     context = LLMContext(tools=tools)
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
             vad_analyzer=SileroVADAnalyzer(),
+            user_turn_strategies=UserTurnStrategies(
+                start=[wake, *default_user_turn_start_strategies()],
+            ),
         ),
     )
 
