@@ -18,14 +18,18 @@ Run the bot using::
     uv run bot.py
 """
 
+import asyncio
 import os
+import time
 from datetime import datetime
+from pathlib import Path
 
+import aiohttp
 from dotenv import load_dotenv
 from loguru import logger
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.frames.frames import LLMRunFrame
+from pipecat.frames.frames import LLMRunFrame, TTSSpeakFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -62,10 +66,168 @@ load_dotenv(override=True)
 VALID_VOICES["af_heart"] = "af_heart"
 
 
+# ---------------------------------------------------------------------------
+# Tools
+# ---------------------------------------------------------------------------
+
+# Active timers: name -> (task, total_seconds, start_time)
+_active_timers: dict[str, tuple[asyncio.Task, int, float]] = {}
+
+
 async def get_current_time(params: FunctionCallParams):
     """Get the current local time."""
     now = datetime.now().astimezone()
-    await params.result_callback({"time": now.strftime("%H:%M")})
+    await params.result_callback(f"The current time is {now.strftime('%I:%M %p')}.")
+
+
+async def get_current_date(params: FunctionCallParams):
+    """Get the current date and day of the week."""
+    now = datetime.now().astimezone()
+    await params.result_callback(
+        f"Today is {now.strftime('%A')}, {now.strftime('%B %d, %Y')}."
+    )
+
+
+async def set_timer(params: FunctionCallParams, seconds: int, label: str):
+    """Set a timer that fires after a given number of seconds.
+
+    Args:
+        seconds: Duration in seconds, must be between 1 and 3600.
+        label: A short name for this timer, e.g. "pasta" or "5 minute timer".
+    """
+    if seconds <= 0 or seconds > 3600:
+        await params.result_callback(
+            "Timer duration must be between 1 and 3600 seconds."
+        )
+        return
+
+    if label in _active_timers:
+        await params.result_callback(f"A timer called '{label}' already exists.")
+        return
+
+    async def _timer_task():
+        try:
+            await asyncio.sleep(seconds)
+        except asyncio.CancelledError:
+            _active_timers.pop(label, None)
+            return
+        _active_timers.pop(label, None)
+        # Speak directly via TTS, bypassing the LLM entirely.
+        await params.llm.push_frame(
+            TTSSpeakFrame(text=f"Hey, your timer {label} just went off!")
+        )
+
+    task = asyncio.create_task(_timer_task())
+    _active_timers[label] = (task, seconds, time.monotonic())
+    await params.result_callback(f"Timer '{label}' set for {seconds} seconds.")
+
+
+async def get_timers(params: FunctionCallParams):
+    """List all active timers that have not yet fired."""
+    now = time.monotonic()
+    lines = []
+    for name, (task, total, start) in _active_timers.items():
+        if not task.done():
+            remaining = max(0, int(total - (now - start)))
+            mins, secs = divmod(remaining, 60)
+            if mins > 0:
+                lines.append(f"{name}: {mins} minutes and {secs} seconds remaining")
+            else:
+                lines.append(f"{name}: {secs} seconds remaining")
+    if lines:
+        await params.result_callback("; ".join(lines))
+    else:
+        await params.result_callback("No active timers.")
+
+
+async def get_weather(params: FunctionCallParams):
+    """Get current weather for Austin, Texas."""
+    url = (
+        "https://api.open-meteo.com/v1/forecast"
+        "?latitude=30.2672&longitude=-97.7431"
+        "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code"
+        "&temperature_unit=fahrenheit&wind_speed_unit=mph"
+    )
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                resp.raise_for_status()
+                data = await resp.json()
+                c = data["current"]
+                await params.result_callback(
+                    f"Weather in Austin, Texas: {c['temperature_2m']} degrees Fahrenheit, "
+                    f"humidity {c['relative_humidity_2m']}%, "
+                    f"wind {c['wind_speed_10m']} miles per hour."
+                )
+    except Exception as e:
+        logger.debug(f"Weather API error: {e}")
+        await params.result_callback("Unable to fetch weather data right now.")
+
+
+def _parse_cpu_stat() -> tuple[int, int]:
+    """Parse /proc/stat and return (idle, total) jiffies."""
+    stat = Path("/proc/stat").read_text()
+    cpu_line = stat.splitlines()[0].split()
+    # user, nice, system, idle, iowait, irq, softirq
+    vals = [int(v) for v in cpu_line[1:8]]
+    idle = vals[3] + vals[4]
+    return idle, sum(vals)
+
+
+async def get_system_status(params: FunctionCallParams):
+    """Get system status: CPU/GPU utilization, memory usage, and temperatures."""
+    parts = []
+
+    # Memory
+    try:
+        meminfo = Path("/proc/meminfo").read_text()
+        mem = {}
+        for line in meminfo.splitlines():
+            fields = line.split()
+            if fields[0].rstrip(":") in ("MemTotal", "MemAvailable"):
+                mem[fields[0].rstrip(":")] = int(fields[1])  # kB
+        total_mb = mem.get("MemTotal", 0) // 1024
+        avail_mb = mem.get("MemAvailable", 0) // 1024
+        used_mb = total_mb - avail_mb
+        parts.append(f"Memory: {used_mb} MB used out of {total_mb} MB")
+    except Exception as e:
+        logger.debug(f"Failed to read memory info: {e}")
+
+    # Temperatures (Jetson thermal zones)
+    try:
+        thermal = Path("/sys/class/thermal")
+        temps = []
+        for zone in sorted(thermal.glob("thermal_zone*")):
+            name = (zone / "type").read_text().strip()
+            temp_mc = int((zone / "temp").read_text().strip())
+            temps.append(f"{name} {round(temp_mc / 1000, 1)} C")
+        if temps:
+            parts.append(f"Temperatures: {', '.join(temps)}")
+    except Exception as e:
+        logger.debug(f"Failed to read temperatures: {e}")
+
+    # GPU utilization (Jetson — path is JetPack-version-dependent)
+    try:
+        gpu_load = Path("/sys/devices/gpu.0/load")
+        if gpu_load.exists():
+            load = int(gpu_load.read_text().strip())
+            parts.append(f"GPU utilization: {round(load / 10, 1)}%")
+    except Exception as e:
+        logger.debug(f"Failed to read GPU load: {e}")
+
+    # CPU utilization (two-sample delta over 100ms for current usage)
+    try:
+        idle1, total1 = _parse_cpu_stat()
+        await asyncio.sleep(0.1)
+        idle2, total2 = _parse_cpu_stat()
+        d_idle = idle2 - idle1
+        d_total = total2 - total1
+        if d_total > 0:
+            parts.append(f"CPU utilization: {round((1 - d_idle / d_total) * 100, 1)}%")
+    except Exception as e:
+        logger.debug(f"Failed to read CPU stats: {e}")
+
+    await params.result_callback(". ".join(parts) if parts else "Unable to read system status.")
 
 
 SYSTEM_INSTRUCTION = (
@@ -121,9 +283,18 @@ async def run_bot(transport: BaseTransport):
             ),
         )
 
-    llm.register_direct_function(get_current_time)
+    all_tools = [
+        get_current_time,
+        get_current_date,
+        set_timer,
+        get_timers,
+        get_weather,
+        get_system_status,
+    ]
+    for fn in all_tools:
+        llm.register_direct_function(fn)
 
-    tools = ToolsSchema(standard_tools=[get_current_time])
+    tools = ToolsSchema(standard_tools=all_tools)
 
     wake = WakePhraseUserTurnStartStrategy(
         phrases=["hey jerry"],
@@ -143,7 +314,7 @@ async def run_bot(transport: BaseTransport):
             enable_auto_context_summarization=True,
             auto_context_summarization_config=LLMAutoContextSummarizationConfig(
                 max_context_tokens=1500,
-                max_unsummarized_messages=10,
+                max_unsummarized_messages=20,
                 summary_config=LLMContextSummaryConfig(
                     target_context_tokens=500,
                     min_messages_after_summary=2,

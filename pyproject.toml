@@ -5,5 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "aiohttp",
     "pipecat-ai[kokoro,openai,runner,silero,webrtc,whisper]>=1.0.0",
 ]

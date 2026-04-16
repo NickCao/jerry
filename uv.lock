@@ -981,11 +981,15 @@ name = "jerry"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "pipecat-ai", extra = ["kokoro", "openai", "runner", "webrtc", "whisper"] },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pipecat-ai", extras = ["kokoro", "openai", "runner", "silero", "webrtc", "whisper"], specifier = ">=1.0.0" }]
+requires-dist = [
+    { name = "aiohttp" },
+    { name = "pipecat-ai", extras = ["kokoro", "openai", "runner", "silero", "webrtc", "whisper"], specifier = ">=1.0.0" },
+]
 
 [[package]]
 name = "jinja2"
