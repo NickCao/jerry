@@ -31,8 +31,13 @@ from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
+    LLMAssistantAggregatorParams,
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
+)
+from pipecat.utils.context.llm_context_summarization import (
+    LLMAutoContextSummarizationConfig,
+    LLMContextSummaryConfig,
 )
 from pipecat.turns.user_start import WakePhraseUserTurnStartStrategy
 from pipecat.turns.user_turn_strategies import (
@@ -132,6 +137,17 @@ async def run_bot(transport: BaseTransport):
             vad_analyzer=SileroVADAnalyzer(),
             user_turn_strategies=UserTurnStrategies(
                 start=[wake, *default_user_turn_start_strategies()],
+            ),
+        ),
+        assistant_params=LLMAssistantAggregatorParams(
+            enable_auto_context_summarization=True,
+            auto_context_summarization_config=LLMAutoContextSummarizationConfig(
+                max_context_tokens=1500,
+                max_unsummarized_messages=10,
+                summary_config=LLMContextSummaryConfig(
+                    target_context_tokens=500,
+                    min_messages_after_summary=2,
+                ),
             ),
         ),
     )
