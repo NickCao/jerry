@@ -64,11 +64,13 @@ async def get_current_time(params: FunctionCallParams):
 
 
 SYSTEM_INSTRUCTION = (
-    "You are a helpful assistant in a voice conversation. Your responses will "
-    "be spoken aloud, so avoid emojis, bullet points, or other formatting that "
-    "can't be spoken. Respond to what the user said in a creative, helpful, and "
-    "brief way. When you need information you don't have, always use the "
-    "available tools instead of guessing or making up answers."
+    "You are Jerry, a helpful voice assistant. Your responses will be spoken "
+    "aloud, so avoid emojis, bullet points, or other formatting that can't be "
+    "spoken. Respond in a creative, helpful, and brief way. The user activates "
+    'you by saying "Hey Jerry" — ignore this wake phrase and respond only to '
+    'what follows it. Never start your response with "Hey Jerry". When you '
+    "need information you don't have, always use the available tools instead "
+    "of guessing or making up answers."
 )
 
 TEST_MODE = os.environ.get("JERRY_TEST", "").lower() in ("1", "true", "yes")
@@ -87,6 +89,15 @@ async def run_bot(transport: BaseTransport):
         device="cpu",
     )
 
+    llm = OpenAILLMService(
+        base_url="http://127.0.0.1:8000/v1",
+        api_key="dummy",
+        settings=OpenAILLMService.Settings(
+            model="Qwen/Qwen2.5-3B-Instruct-AWQ",
+            system_instruction=SYSTEM_INSTRUCTION,
+        ),
+    )
+
     if TEST_MODE:
         from pipecat.services.kokoro.tts import KokoroTTSService
 
@@ -96,30 +107,12 @@ async def run_bot(transport: BaseTransport):
                 language="en",
             ),
         )
-
-        llm = OpenAILLMService(
-            base_url=os.environ.get("OPENAI_BASE_URL", "https://openrouter.ai/api/v1"),
-            api_key=os.environ.get("OPENAI_API_KEY", ""),
-            settings=OpenAILLMService.Settings(
-                model=os.environ.get("OPENAI_MODEL", "qwen/qwen-2.5-7b-instruct"),
-                system_instruction=SYSTEM_INSTRUCTION,
-            ),
-        )
     else:
         tts = OpenAITTSService(
             base_url="http://127.0.0.1:8001/v1",
             api_key="dummy",
             settings=OpenAITTSService.Settings(
                 voice="af_heart",
-            ),
-        )
-
-        llm = OpenAILLMService(
-            base_url="http://127.0.0.1:8000/v1",
-            api_key="dummy",
-            settings=OpenAILLMService.Settings(
-                model="Qwen/Qwen2.5-3B-Instruct-AWQ",
-                system_instruction=SYSTEM_INSTRUCTION,
             ),
         )
 
