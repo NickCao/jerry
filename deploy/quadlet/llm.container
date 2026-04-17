@@ -11,7 +11,15 @@ Image=ghcr.io/nickcao/jerry/llm:latest
 ContainerName=llm
 AddDevice=nvidia.com/gpu=all
 Network=host
-Exec=vllm serve Qwen/Qwen2.5-3B-Instruct-AWQ --port 8000 --max-model-len 2048 --kv-cache-memory-bytes 72M --enforce-eager --enable-auto-tool-choice --tool-call-parser hermes --gpu-memory-utilization 0.01
+Environment=HF_HUB_OFFLINE=1
+Notify=healthy
+HealthCmd=curl -sf http://localhost:8000/health
+HealthInterval=5s
+HealthStartPeriod=120s
+Exec=vllm serve Qwen/Qwen2.5-3B-Instruct-AWQ \
+    --port 8000 --enforce-eager \
+    --max-model-len 2048 --kv-cache-memory-bytes 72M --gpu-memory-utilization 0.01 \
+    --enable-auto-tool-choice --tool-call-parser hermes
 
 [Install]
 WantedBy=default.target
