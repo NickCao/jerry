@@ -23,5 +23,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ENV PATH="/app/.venv/bin:$PATH"
 
+# Pre-download models at build time for offline use
+RUN python3 -c "import whisper; whisper.load_model('tiny')"
+RUN python3 -c "from pipecat.audio.vad.silero import SileroVADAnalyzer; SileroVADAnalyzer()"
+
 ENTRYPOINT []
 CMD ["uv", "run", "main.py"]
