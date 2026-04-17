@@ -24,8 +24,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Pre-download models at build time for offline use
-RUN python3 -c "import whisper; whisper._download(whisper._MODELS['tiny'], '/root/.cache/whisper', False)"
-RUN python3 -c "import torch; torch.hub.load('snakers4/silero-vad', 'silero_vad')"
+RUN uv run python3 -c "import whisper; whisper._download(whisper._MODELS['tiny'], '/root/.cache/whisper', False)"
+RUN uv run python3 -c "import torch; torch.hub.load('snakers4/silero-vad', 'silero_vad')"
 
 ENTRYPOINT []
 CMD ["uv", "run", "main.py"]
