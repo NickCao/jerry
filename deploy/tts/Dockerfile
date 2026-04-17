@@ -6,5 +6,6 @@ RUN apt-get update && \
 RUN git clone --branch kokoro https://github.com/NickCao/vllm-omni.git
 RUN bash -c 'uv pip install -e ./vllm-omni --overrides <(echo "diffusers==0.35.0.dev0")'
 
-# Download model weights at build time for offline use
+# Download model weights and NLP models at build time for offline use
 RUN hf download hexgrad/Kokoro-82M
+RUN python3 -m spacy download en_core_web_sm
