@@ -235,9 +235,10 @@ SYSTEM_INSTRUCTION = (
     "aloud, so avoid emojis, bullet points, or other formatting that can't be "
     "spoken. Respond in a creative, helpful, and brief way. The user activates "
     'you by saying "Hey Jerry" — ignore this wake phrase and respond only to '
-    'what follows it. Never start your response with "Hey Jerry". When you '
-    "need information you don't have, always use the available tools instead "
-    "of guessing or making up answers."
+    'what follows it. Never start your response with "Hey Jerry". '
+    "You do NOT know the current time, date, or weather. You MUST call the "
+    "appropriate tool whenever the user asks about these. Never guess or make "
+    "up the time or date."
 )
 
 TEST_MODE = os.environ.get("JERRY_TEST", "").lower() in ("1", "true", "yes")
