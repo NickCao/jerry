@@ -7,4 +7,4 @@ RUN git clone --branch kokoro https://github.com/NickCao/vllm-omni.git
 RUN bash -c 'uv pip install -e ./vllm-omni --overrides <(echo "diffusers==0.35.0.dev0")'
 
 # Download model weights at build time for offline use
-RUN huggingface-cli download hexgrad/Kokoro-82M
+RUN hf download hexgrad/Kokoro-82M
