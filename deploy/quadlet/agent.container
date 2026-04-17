@@ -1,0 +1,12 @@
+[Unit]
+Description=Jerry Voice Assistant
+After=llm.container tts.container
+Requires=llm.container tts.container
+
+[Container]
+Image=ghcr.io/nickcao/jerry/agent:latest
+ContainerName=agent
+Network=host
+
+[Install]
+WantedBy=default.target

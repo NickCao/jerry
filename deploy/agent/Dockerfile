@@ -8,7 +8,9 @@ ENV UV_NO_DEV=1
 ENV UV_TOOL_BIN_DIR=/usr/local/bin
 
 RUN apt-get update && \
-    apt-get install -y libxcb1 libgl1 libglib2.0-0t64
+    apt-get install -y libxcb1 libgl1 libglib2.0-0t64 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock,z \

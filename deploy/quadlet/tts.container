@@ -1,0 +1,17 @@
+[Unit]
+Description=vllm-omni TTS Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+TimeoutStartSec=300
+
+[Container]
+Image=ghcr.io/nickcao/jerry/tts:latest
+ContainerName=tts
+AddDevice=nvidia.com/gpu=all
+Network=host
+Exec=vllm serve --omni hexgrad/Kokoro-82M --port 8001
+
+[Install]
+WantedBy=default.target

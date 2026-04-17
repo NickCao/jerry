@@ -1,0 +1,17 @@
+[Unit]
+Description=vLLM LLM Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+TimeoutStartSec=300
+
+[Container]
+Image=ghcr.io/nickcao/jerry/llm:latest
+ContainerName=llm
+AddDevice=nvidia.com/gpu=all
+Network=host
+Exec=vllm serve Qwen/Qwen2.5-3B-Instruct-AWQ --port 8000 --max-model-len 2048 --kv-cache-memory-bytes 72M --enforce-eager --enable-auto-tool-choice --tool-call-parser hermes --gpu-memory-utilization 0.01
+
+[Install]
+WantedBy=default.target
