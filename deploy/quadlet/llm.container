@@ -12,6 +12,7 @@ ContainerName=llm
 AddDevice=nvidia.com/gpu=all
 Network=host
 Environment=HF_HUB_OFFLINE=1
+Environment=VLLM_USE_V2_MODEL_RUNNER=1
 Notify=healthy
 HealthCmd=curl -sf http://localhost:8000/health
 HealthInterval=5s
