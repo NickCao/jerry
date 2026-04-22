@@ -17,10 +17,7 @@ Notify=healthy
 HealthCmd=curl -sf http://localhost:8000/health
 HealthInterval=5s
 HealthStartPeriod=120s
-Exec=vllm serve Qwen/Qwen2.5-3B-Instruct-AWQ \
-    --port 8000 --enforce-eager \
-    --max-model-len 2048 --kv-cache-memory-bytes 72M --gpu-memory-utilization 0.01 \
-    --enable-auto-tool-choice --tool-call-parser hermes
+Exec=vllm serve Qwen/Qwen2.5-3B-Instruct-AWQ --port 8000 --enforce-eager --max-model-len 2048 --kv-cache-memory-bytes 72M --gpu-memory-utilization 0.01 --enable-auto-tool-choice --tool-call-parser hermes
 GlobalArgs=--storage-opt=additionalimagestore=/usr/lib/bootc/storage
 
 [Install]
