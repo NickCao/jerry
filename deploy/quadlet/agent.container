@@ -7,6 +7,7 @@ Requires=llm.container tts.container
 Image=ghcr.io/nickcao/jerry/agent:latest
 ContainerName=agent
 Network=host
+GlobalArgs=--storage-opt=additionalimagestore=/usr/lib/bootc/storage
 
 [Install]
 WantedBy=default.target

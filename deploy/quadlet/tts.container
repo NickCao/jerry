@@ -17,6 +17,7 @@ HealthCmd=curl -sf http://localhost:8001/health
 HealthInterval=5s
 HealthStartPeriod=120s
 Exec=vllm serve --omni hexgrad/Kokoro-82M --port 8001
+GlobalArgs=--storage-opt=additionalimagestore=/usr/lib/bootc/storage
 
 [Install]
 WantedBy=default.target
