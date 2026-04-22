@@ -164,72 +164,6 @@ async def get_weather(params: FunctionCallParams):
         await params.result_callback("Unable to fetch weather data right now.")
 
 
-def _parse_cpu_stat() -> tuple[int, int]:
-    """Parse /proc/stat and return (idle, total) jiffies."""
-    stat = Path("/proc/stat").read_text()
-    cpu_line = stat.splitlines()[0].split()
-    # user, nice, system, idle, iowait, irq, softirq
-    vals = [int(v) for v in cpu_line[1:8]]
-    idle = vals[3] + vals[4]
-    return idle, sum(vals)
-
-
-async def get_system_status(params: FunctionCallParams):
-    """Get system status: CPU/GPU utilization, memory usage, and temperatures."""
-    parts = []
-
-    # Memory
-    try:
-        meminfo = Path("/proc/meminfo").read_text()
-        mem = {}
-        for line in meminfo.splitlines():
-            fields = line.split()
-            if fields[0].rstrip(":") in ("MemTotal", "MemAvailable"):
-                mem[fields[0].rstrip(":")] = int(fields[1])  # kB
-        total_mb = mem.get("MemTotal", 0) // 1024
-        avail_mb = mem.get("MemAvailable", 0) // 1024
-        used_mb = total_mb - avail_mb
-        parts.append(f"Memory: {used_mb} MB used out of {total_mb} MB")
-    except Exception as e:
-        logger.debug(f"Failed to read memory info: {e}")
-
-    # Temperatures (Jetson thermal zones)
-    try:
-        thermal = Path("/sys/class/thermal")
-        temps = []
-        for zone in sorted(thermal.glob("thermal_zone*")):
-            name = (zone / "type").read_text().strip()
-            temp_mc = int((zone / "temp").read_text().strip())
-            temps.append(f"{name} {round(temp_mc / 1000, 1)} C")
-        if temps:
-            parts.append(f"Temperatures: {', '.join(temps)}")
-    except Exception as e:
-        logger.debug(f"Failed to read temperatures: {e}")
-
-    # GPU utilization (Jetson — path is JetPack-version-dependent)
-    try:
-        gpu_load = Path("/sys/devices/gpu.0/load")
-        if gpu_load.exists():
-            load = int(gpu_load.read_text().strip())
-            parts.append(f"GPU utilization: {round(load / 10, 1)}%")
-    except Exception as e:
-        logger.debug(f"Failed to read GPU load: {e}")
-
-    # CPU utilization (two-sample delta over 100ms for current usage)
-    try:
-        idle1, total1 = _parse_cpu_stat()
-        await asyncio.sleep(0.1)
-        idle2, total2 = _parse_cpu_stat()
-        d_idle = idle2 - idle1
-        d_total = total2 - total1
-        if d_total > 0:
-            parts.append(f"CPU utilization: {round((1 - d_idle / d_total) * 100, 1)}%")
-    except Exception as e:
-        logger.debug(f"Failed to read CPU stats: {e}")
-
-    await params.result_callback(". ".join(parts) if parts else "Unable to read system status.")
-
-
 SYSTEM_INSTRUCTION = (
     "You are Jerry, a helpful voice assistant. Your responses will be spoken "
     "aloud, so avoid emojis, bullet points, or other formatting that can't be "
@@ -290,7 +224,6 @@ async def run_bot(transport: BaseTransport):
         set_timer,
         get_timers,
         get_weather,
-        get_system_status,
     ]
     for fn in all_tools:
         llm.register_direct_function(fn)
